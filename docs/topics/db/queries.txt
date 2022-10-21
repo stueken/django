@@ -1725,6 +1725,57 @@ relationships accept primary key values. For example, if ``e1`` and ``e2`` are
     a.entry_set.set([e1, e2])
     a.entry_set.set([e1.pk, e2.pk])
 
+.. admonition:: Many-to-many relations may return unexpected duplicates.
+
+    For example, if you want to return a list of all model A instances which
+    refer to at least one model B instance through a many-to-many relationship,
+    each model A instance is returned as often as there are model B instances
+    linked to it.
+
+    A detailed example:
+
+    .. code-block:: python
+
+        >>> beatles_blog = Blog.objects.create(name='Beatles Blog')
+        >>> john = Author.objects.create(name="John")
+        >>> paul = Author.objects.create(name="Paul")
+        >>> george = Author.objects.create(name="George")
+        >>> ringo = Author.objects.create(name="Ringo")
+        >>>
+        >>> entry_1 = Entry.objects.create(
+        ...     blog=beatles_blog,
+        ...     headline='New Lennon Biography',
+        ... )
+        >>> entry_2 = Entry.objects.create(
+        ...     blog=beatles_blog,
+        ...     headline='Most Covered Band in History',
+        ... )
+        >>> entry_3 = Entry.objects.create(
+        ...     blog=beatles_blog,
+        ...     headline='Exclusive Interview with Paul',
+        ...)
+        >>> entry_1.authors.set([john, paul, george])
+        >>> entry_2.authors.set([ringo])
+
+    Different than perhaps expected, filtering all entries with more than one
+    author returns every entry with authors as often as authors are related to
+    this entry:
+
+    .. code-block:: python
+
+        >>> Entry.objects.filter(authors__isnull=False)
+        <QuerySet [<Entry: New Lennon Biography>, <Entry: New Lennon Biography>,
+        <Entry: New Lennon Biography>, <Entry: Most Covered Band in History>]>
+
+    In this case, use :meth:`~django.db.models.query.QuerySet.distinct` to
+    receive the expected result:
+
+    .. code-block:: python
+
+        >>> Entry.objects.filter(authors__isnull=False).distinct()
+        <QuerySet [<Entry: Most Covered Band in History>,
+        <Entry: New Lennon Biography>]>
+
 One-to-one relationships
 ------------------------
 
