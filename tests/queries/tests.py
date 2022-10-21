@@ -660,6 +660,31 @@ class Queries1Tests(TestCase):
         self.assertSequenceEqual(qs, [self.i4, self.i1, self.i3, self.i2])
         self.assertEqual(len(qs.query.alias_map), 1)
 
+    def test_ticket_2361(self):
+        """
+        QuerySet.filter(m2mfield__isnull=False) may return duplicates (#2361).
+        """
+        # Tags without items are returned, but several times if they link to
+        # multiple tags.
+        self.assertQuerysetEqual(
+            Item.objects.filter(tags__isnull=False),
+            [
+                "<Item: four>",
+                "<Item: one>",
+                "<Item: one>",
+                "<Item: two>",
+                "<Item: two>",
+            ],
+            transform=repr,
+        )
+
+        # Adding distinct helps, but feels like a workaround
+        self.assertQuerysetEqual(
+            Item.objects.filter(tags__isnull=False).distinct(),
+            ["<Item: four>", "<Item: one>", "<Item: two>"],
+            transform=repr,
+        )
+
     def test_tickets_2874_3002(self):
         qs = Item.objects.select_related().order_by("note__note", "name")
         self.assertQuerySetEqual(qs, [self.i2, self.i4, self.i1, self.i3])
